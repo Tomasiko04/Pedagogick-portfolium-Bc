@@ -1,1 +1,94 @@
+/*
+ * Projekt: Line Follower Robot (Auto sledující čáru)
+ * Hardware: Arduino Uno/Nano, 2x IR senzor, 2x Kontinuální servo
+ */
 
+#include <Servo.h> // Knihovna pro ovládání servomotorů
+
+// --- KONFIGURACE PINŮ ---
+const int PIN_SENZOR_LEVY = 11;   // Levý senzor připojen na digitální pin 11
+const int PIN_SENZOR_PRAVY = 12; // Pravý senzor připojen na digitální pin 12
+const int PIN_SERVO_LEVE = 3;    // Levé servo na pinu 3 (musí podporovat PWM)
+const int PIN_SERVO_PRAVE = 2;  // Pravé servo na pinu 2
+
+// --- NASTAVENÍ RYCHLOSTI SERV ---
+// Kontinuální serva: 90 = stop, 0 = max jeden směr, 180 = max druhý směr.
+// Hodnoty můžeš upravit, abys auto zpomalil (např. 80 a 100).
+const int RYCHLOST_VPRED_L = 140; 
+const int RYCHLOST_VZAD_L = 40;
+const int RYCHLOST_VPRED_P = 40;   // Pravé servo je zrcadlově otočené, proto 0
+const int RYCHLOST_VZAD_P = 140;
+const int STOP_L = 90;
+const int STOP_P = 90;
+
+// Vytvoření objektů pro serva
+Servo servoLeve;
+Servo servoPrave;
+
+void setup() {
+  // Nastavení pinů senzorů jako vstup
+  pinMode(PIN_SENZOR_LEVY, INPUT);
+  pinMode(PIN_SENZOR_PRAVY, INPUT);
+
+  // Připojení serv k pinům
+  servoLeve.attach(PIN_SERVO_LEVE);
+  servoPrave.attach(PIN_SERVO_PRAVE);
+
+  // Pro ladění přes sériový monitor (volitelné)
+  Serial.begin(9600);
+}
+
+void loop() {
+  // Přečtení hodnot ze senzorů
+  // Většina modulů vrací HIGH (1), když vidí ČERNOU, a LOW (0), když vidí BÍLOU.
+  // Pokud to máš naopak, stačí prohodit logiku níže.
+  int levyStav = digitalRead(PIN_SENZOR_LEVY);
+  int pravyStav = digitalRead(PIN_SENZOR_PRAVY);
+
+  // --- ROZHODOVACÍ LOGIKA ---
+  
+  // 1. Oba senzory vidí bílou -> Jedu rovně
+  // (Čára je mezi senzory)
+  if (levyStav == LOW && pravyStav == LOW) {
+    jedDopredu();
+  }
+  // 2. Levý senzor vidí černou -> Zatáčím doleva
+  else if (levyStav == HIGH && pravyStav == LOW) {
+    zatocVlevo();
+  }
+  // 3. Pravý senzor vidí černou -> Zatáčím doprava
+  else if (levyStav == LOW && pravyStav == HIGH) {
+    zatocDoprava();
+  }
+  // 4. Oba senzory vidí černou -> Zastavím
+  else {
+    zastav();
+  }
+  
+  // Malá pauza pro stabilitu
+  delay(10);
+}
+
+// --- POMOCNÉ FUNKCE PRO POHYB ---
+
+void jedDopredu() {
+  servoLeve.write(RYCHLOST_VPRED_L);
+  servoPrave.write(RYCHLOST_VPRED_P);
+}
+
+void zatocVlevo() {
+  // Pro ostrou zatáčku se levé kolo točí vzad a pravé vpřed
+  servoLeve.write(RYCHLOST_VZAD_L);
+  servoPrave.write(RYCHLOST_VPRED_P);
+}
+
+void zatocDoprava() {
+  // Pro ostrou zatáčku se levé kolo točí vpřed a pravé vzad
+  servoLeve.write(RYCHLOST_VPRED_L);
+  servoPrave.write(RYCHLOST_VZAD_P);
+}
+
+void zastav() {
+  servoLeve.write(STOP_L);
+  servoPrave.write(STOP_P);
+}
